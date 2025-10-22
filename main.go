@@ -4,9 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -175,6 +174,22 @@ func readKey(inputReader *bufio.Reader) (KeyEvent, error) {
 	return ev, nil
 }
 
+// disableSignals disables generation of Ctrl-C (SIGINT) and Ctrl-Z (SIGTSTP)
+// by clearing the ISIG flag in the terminal local modes.
+func disableSignals(fd int) error {
+	// Get current terminal attributes
+	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	if err != nil {
+		return err
+	}
+
+	// Clear the ISIG flag (disable signal generation)
+	termios.Lflag &^= unix.ISIG
+
+	// Apply the modified settings
+	return unix.IoctlSetTermios(fd, unix.TCSETS, termios)
+}
+
 func main() {
 	// put stdin into raw mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -182,17 +197,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "failed to set raw mode:", err)
 		os.Exit(1)
 	}
+
+	// Disable Ctrl-C and Ctrl-Z signal generation
+	if err := disableSignals(int(os.Stdin.Fd())); err != nil {
+		fmt.Fprintln(os.Stderr, "failed to disable signals:", err)
+	}
+
 	// restores the terminal settings after program exit or abort
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-	// ensure we restore terminal state on signals (Ctrl-C, kill, etc)
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigCh
-		term.Restore(int(os.Stdin.Fd()), oldState)
-		os.Exit(0)
-	}()
 
 	fmt.Println("Raw mode enabled. Press keys (Ctrl-Q to quit).")
 	reader := bufio.NewReader(os.Stdin)
