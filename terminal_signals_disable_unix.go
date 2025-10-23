@@ -1,19 +1,19 @@
 //go:build !windows
 
 /*
-File: terminal_signals_disable_unix.go
-
 Disables default terminal signal and flow-control keys:
-  Ctrl-C  - normally sends SIGINT (interrupt)
-  Ctrl-Z  - normally sends SIGTSTP (suspend)
-  Ctrl-S  - pauses output (XOFF)
-  Ctrl-Q  - resumes output (XON)
-  Ctrl-V  - quotes next character literally
+  Ctrl-C   - normally sends SIGINT (interrupt)
+  Ctrl-Z   - normally sends SIGTSTP (suspend)
+  Ctrl-S   - pauses output (XOFF)
+  Ctrl-Q   - resumes output (XON)
+  Ctrl-V   - quotes next character literally
+  CR-to-NL - translation (Ctrl-M fix) via ICRNL
 
 These behaviors are disabled by clearing the following termios flags:
   ISIG   – disables signal generation (Ctrl-C, Ctrl-Z, Ctrl-\)
   IXON   – disables software flow control (Ctrl-S, Ctrl-Q)
   IEXTEN – disables extended input processing (Ctrl-V “literal next”)
+  ICRNL  – disables carriage return to newline translation (prevents Ctrl-M and Enter from both producing '\n')
 */
 
 package main
@@ -41,6 +41,9 @@ func terminalSignalsDisable(fd int) error {
 
 	// Disable special extended input processing (Ctrl-V)
 	termios.Lflag &^= unix.IEXTEN
+
+	// Disable carriage return to newline translation (fix Ctrl-M)
+	termios.Iflag &^= unix.ICRNL
 
 	// Apply updated settings immediately
 	return unix.IoctlSetTermios(fd, unix.TCSETS, termios)

@@ -1,9 +1,5 @@
 //go:build windows
 
-/*
-File: terminal_signals_disable_windows.go
-*/
-
 package main
 
 // function is a no-op on Windows because

@@ -1,6 +1,4 @@
 /*
-File: main.go
-
 This program reads raw keypresses from the terminal and reports them.
 */
 
