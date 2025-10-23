@@ -186,7 +186,7 @@ func main() {
 	}
 
 	// Disable Ctrl-C and Ctrl-Z signal generation
-	if err := terminalSignalsDisable(int(os.Stdin.Fd())); err != nil {
+	if err := terminalRawConfigure(int(os.Stdin.Fd())); err != nil {
 		fmt.Fprintln(os.Stderr, "failed to disable signals:", err)
 	}
 
