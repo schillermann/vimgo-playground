@@ -6,8 +6,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// function disables the generation of SIGINT (Ctrl-C), SIGTSTP (Ctrl-Z),
-// and SIGQUIT (Ctrl-\) by clearing the ISIG flag in the terminal settings.
+// function disables generation of Ctrl-C (SIGINT), Ctrl-Z (SIGTSTP),
+// and disables software flow control (Ctrl-S / Ctrl-Q) so those keys can be read normally.
 func terminalSignalsDisable(fd int) error {
 	// Get current terminal attributes
 	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
@@ -15,8 +15,11 @@ func terminalSignalsDisable(fd int) error {
 		return err
 	}
 
-	// Clear the ISIG flag (disable signal generation)
+	// Disable signal generation (Ctrl-C, Ctrl-Z)
 	termios.Lflag &^= unix.ISIG
+
+	// Disable software flow control (Ctrl-S, Ctrl-Q)
+	termios.Iflag &^= unix.IXON
 
 	// Apply updated settings immediately
 	return unix.IoctlSetTermios(fd, unix.TCSETS, termios)
