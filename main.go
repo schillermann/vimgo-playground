@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -174,22 +173,6 @@ func readKey(inputReader *bufio.Reader) (KeyEvent, error) {
 	return ev, nil
 }
 
-// disableSignals disables generation of Ctrl-C (SIGINT) and Ctrl-Z (SIGTSTP)
-// by clearing the ISIG flag in the terminal local modes.
-func disableSignals(fd int) error {
-	// Get current terminal attributes
-	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
-	if err != nil {
-		return err
-	}
-
-	// Clear the ISIG flag (disable signal generation)
-	termios.Lflag &^= unix.ISIG
-
-	// Apply the modified settings
-	return unix.IoctlSetTermios(fd, unix.TCSETS, termios)
-}
-
 func main() {
 	// put stdin into raw mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -199,7 +182,7 @@ func main() {
 	}
 
 	// Disable Ctrl-C and Ctrl-Z signal generation
-	if err := disableSignals(int(os.Stdin.Fd())); err != nil {
+	if err := terminalSignalsDisable(int(os.Stdin.Fd())); err != nil {
 		fmt.Fprintln(os.Stderr, "failed to disable signals:", err)
 	}
 
