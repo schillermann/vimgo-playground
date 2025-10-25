@@ -39,9 +39,9 @@ type KeyEvent struct {
 	Ctrl    bool    // whether ctrl was pressed (for printable letters)
 }
 
-// readKey reads from stdin (one or more bytes) and returns a KeyEvent.
+// readKeyBlocking reads from stdin (one or more bytes) and returns a KeyEvent.
 // It assumes stdin is in raw mode.
-func readKey(inputReader *bufio.Reader) (KeyEvent, error) {
+func readKeyBlocking(inputReader *bufio.Reader) (KeyEvent, error) {
 	var ev KeyEvent
 
 	inputByte, err := inputReader.ReadByte()
@@ -195,52 +195,67 @@ func main() {
 
 	fmt.Println("Raw mode enabled. Press keys (Ctrl-Q to quit).")
 	reader := bufio.NewReader(os.Stdin)
+	keyChannel := make(chan KeyEvent)
+
+	// Start a single goroutine that continuously reads key events.
+	go func() {
+		for {
+			keyEvent, err := readKeyBlocking(reader)
+			if err != nil {
+				close(keyChannel)
+				return
+			}
+			keyChannel <- keyEvent
+		}
+	}()
 
 	for {
-		ev, err := readKey(reader)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "read error:", err)
-			break
-		}
-
-		// Quit on Ctrl-Q (ASCII 17)
-		if ev.Ctrl && ev.Rune == 'q' {
-			fmt.Println("\nQuit (Ctrl-Q). Restoring terminal and exiting.")
-			break
-		}
-
-		// print what we saw
-		switch ev.KeyCode {
-		case KeyRune:
-			if ev.Ctrl {
-				fmt.Printf("Ctrl + %c\n", ev.Rune)
-			} else {
-				fmt.Printf("Rune: %q\n", ev.Rune)
+		select {
+		case ev, ok := <-keyChannel:
+			if !ok {
+				return
 			}
-		case KeyEnter:
-			fmt.Println("Enter")
-		case KeyArrowUp:
-			fmt.Println("ArrowUp")
-		case KeyArrowDown:
-			fmt.Println("ArrowDown")
-		case KeyArrowLeft:
-			fmt.Println("ArrowLeft")
-		case KeyArrowRight:
-			fmt.Println("ArrowRight")
-		case KeyHome:
-			fmt.Println("Home")
-		case KeyEnd:
-			fmt.Println("End")
-		case KeyPageUp:
-			fmt.Println("PageUp")
-		case KeyPageDown:
-			fmt.Println("PageDown")
-		case KeyDelete:
-			fmt.Println("Delete")
-		case KeyEsc:
-			fmt.Println("Escape")
-		default:
-			fmt.Println("Unknown key")
+
+			// Quit on Ctrl-Q
+			if ev.Ctrl && ev.Rune == 'q' {
+				fmt.Println("\nQuit (Ctrl-Q). Restoring terminal and exiting.")
+				return
+			}
+
+			// Clear current line and print key
+			fmt.Print("\r\033[K")
+			switch ev.KeyCode {
+			case KeyRune:
+				if ev.Ctrl {
+					fmt.Printf("Ctrl + %c", ev.Rune)
+				} else {
+					fmt.Printf("Rune: %q", ev.Rune)
+				}
+			case KeyEnter:
+				fmt.Print("Enter")
+			case KeyArrowUp:
+				fmt.Print("ArrowUp")
+			case KeyArrowDown:
+				fmt.Print("ArrowDown")
+			case KeyArrowLeft:
+				fmt.Print("ArrowLeft")
+			case KeyArrowRight:
+				fmt.Print("ArrowRight")
+			case KeyHome:
+				fmt.Print("Home")
+			case KeyEnd:
+				fmt.Print("End")
+			case KeyPageUp:
+				fmt.Print("PageUp")
+			case KeyPageDown:
+				fmt.Print("PageDown")
+			case KeyDelete:
+				fmt.Print("Delete")
+			case KeyEsc:
+				fmt.Print("Escape")
+			default:
+				fmt.Print("Unknown key")
+			}
 		}
 	}
 }
