@@ -12,6 +12,15 @@ import (
 	"golang.org/x/term"
 )
 
+// ANSI escape sequences for screen control
+const (
+	ansiClearScreen     = "\033[2J"
+	ansiClearScrollback = "\033[3J"
+	ansiCursorHome      = "\033[H"
+	ansiAltScreenOn     = "\033[?1049h"
+	ansiAltScreenOff    = "\033[?1049l"
+)
+
 // KeyCode represents special non-printable keys.
 type KeyCode int
 
@@ -190,6 +199,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "failed to disable signals:", err)
 	}
 
+	// enter new screen buffer
+	fmt.Print(ansiAltScreenOn)
+	// leave new screen buffer
+	defer fmt.Print(ansiAltScreenOff)
+
 	// restores the terminal settings after program exit or abort
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
@@ -222,8 +236,8 @@ func main() {
 				return
 			}
 
-			// Clear current line and print key
-			fmt.Print("\r\033[K")
+			// Fullscreen
+			fmt.Print(ansiClearScrollback, ansiCursorHome, ansiClearScreen)
 			switch ev.KeyCode {
 			case KeyRune:
 				if ev.Ctrl {
