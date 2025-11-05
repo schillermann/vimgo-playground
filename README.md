@@ -1,5 +1,6 @@
 # Overview
 This is a terminal-based text editor developed entirely with ChatGPT model GPT-5 for testing purposes to determine with which mindset a software developer can use AI for software development.
+I'm using blog post [Build Your Own Text Editor](http://viewsourcecode.org/snaptoken/kilo/index.html) with kilo as a guide.
 
 # Development
 
