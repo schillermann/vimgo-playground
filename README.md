@@ -53,3 +53,19 @@ The ChatGPT hadn't detected the problem beforehand.
 He would have had the opportunity to examine my code in a single file of 275 lines.
 In my case, the error was immediately apparent, in more complex programs, it can lead to data loss before the error is detected.
 Therefore, it remains the developer's responsibility to have sufficient experience to recognize such errors in the code beforehand, even before it is committed to Git.
+
+## Alternatives 
+ChatGPT suggests common approaches, but not specific ones.
+
+**Example:**
+Key press input blocks the main process.
+ChatGPT should provide me with solutions to unblock the key press input.
+It first suggests the simplest solution using `time.Ticker`.
+In this solution the `time.Ticker` is set to 2 seconds, and `select` receives a signal when no key has been pressed, allowing another process to be handled, otherwise it reacts to the key press.
+Then I asked for another solution.
+It suggested moving the key press input to a goroutine.
+Even with the information that I wanted to use the editor for Linux, it didn't point out that I could also use `VMIN` and `VTIME` to achieve non-blocking or timeout-based reads of the key press input directly via Termios.
+Only after I explicitly mentioned `VMIN` and `VTIME` did it offer a solution for this as well.
+
+I only became aware of this possibility by reading the Termios documentation.
+ChatGPT doesn't save you from having to read the documentation.
