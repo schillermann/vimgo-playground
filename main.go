@@ -1,5 +1,5 @@
 /*
-This program reads raw keypresses from the terminal and reports them.
+Minimal terminal-based text editor with basic features and no dependencies for Linux, macOS and Windows.
 */
 
 package main
