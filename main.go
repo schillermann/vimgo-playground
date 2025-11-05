@@ -209,7 +209,7 @@ func main() {
 
 	fmt.Println("Raw mode enabled. Press keys (Ctrl-Q to quit).")
 	reader := bufio.NewReader(os.Stdin)
-	keyChannel := make(chan KeyEvent)
+	keyChannel := make(chan KeyEvent, 1)
 
 	// Start a single goroutine that continuously reads key events.
 	go func() {
@@ -219,7 +219,11 @@ func main() {
 				close(keyChannel)
 				return
 			}
-			keyChannel <- keyEvent
+			select {
+			case keyChannel <- keyEvent:
+			default:
+				// drop this key press if main loop hasn't consumed the previous event
+			}
 		}
 	}()
 
