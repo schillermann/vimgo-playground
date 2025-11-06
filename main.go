@@ -194,9 +194,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Disable Ctrl-C and Ctrl-Z signal generation
-	if err := terminalRawConfigure(int(os.Stdin.Fd())); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to disable signals:", err)
+	stdin := int(os.Stdin.Fd())
+	stdout := int(os.Stdout.Fd())
+
+	if err := terminalRawConfigure(stdin); err != nil {
+		panic(err)
+	}
+	if err := terminalRawConfigure(stdout); err != nil {
+		panic(err)
 	}
 
 	// enter new screen buffer
