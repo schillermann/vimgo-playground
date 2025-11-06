@@ -14,11 +14,11 @@ import (
 
 // ANSI escape sequences for screen control
 const (
-	ansiClearScreen     = "\033[2J"
-	ansiClearScrollback = "\033[3J"
-	ansiCursorHome      = "\033[H"
-	ansiAltScreenOn     = "\033[?1049h"
-	ansiAltScreenOff    = "\033[?1049l"
+	ansiClearScreen         = "\033[2J"
+	ansiClearScrollback     = "\033[3J"
+	ansiCursorTopLeftCorner = "\033[H"
+	ansiAltScreenOn         = "\033[?1049h"
+	ansiAltScreenOff        = "\033[?1049l"
 )
 
 // KeyCode represents special non-printable keys.
@@ -186,6 +186,20 @@ func readKeyBlocking(inputReader *bufio.Reader) (KeyEvent, error) {
 	return ev, nil
 }
 
+func refreshScreen() {
+	// Fullscreen
+	fmt.Print(ansiClearScrollback, ansiCursorTopLeftCorner, ansiClearScreen)
+
+	// draw 24 rows of '~'
+	const editorRows = 24
+	for i := 0; i < editorRows; i++ {
+		fmt.Print("~\r\n")
+	}
+
+	// Move cursor back to top-left corner after drawing
+	fmt.Print(ansiCursorTopLeftCorner)
+}
+
 func main() {
 	// put stdin into raw mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -212,7 +226,6 @@ func main() {
 	// restores the terminal settings after program exit or abort
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-	fmt.Println("Raw mode enabled. Press keys (Ctrl-Q to quit).")
 	reader := bufio.NewReader(os.Stdin)
 	keyChannel := make(chan KeyEvent, 1)
 
@@ -233,6 +246,7 @@ func main() {
 	}()
 
 	for {
+		refreshScreen()
 		select {
 		case ev, ok := <-keyChannel:
 			if !ok {
@@ -243,41 +257,6 @@ func main() {
 			if ev.Ctrl && ev.Rune == 'q' {
 				fmt.Println("\nQuit (Ctrl-Q). Restoring terminal and exiting.")
 				return
-			}
-
-			// Fullscreen
-			fmt.Print(ansiClearScrollback, ansiCursorHome, ansiClearScreen)
-			switch ev.KeyCode {
-			case KeyRune:
-				if ev.Ctrl {
-					fmt.Printf("Ctrl + %c", ev.Rune)
-				} else {
-					fmt.Printf("Rune: %q", ev.Rune)
-				}
-			case KeyEnter:
-				fmt.Print("Enter")
-			case KeyArrowUp:
-				fmt.Print("ArrowUp")
-			case KeyArrowDown:
-				fmt.Print("ArrowDown")
-			case KeyArrowLeft:
-				fmt.Print("ArrowLeft")
-			case KeyArrowRight:
-				fmt.Print("ArrowRight")
-			case KeyHome:
-				fmt.Print("Home")
-			case KeyEnd:
-				fmt.Print("End")
-			case KeyPageUp:
-				fmt.Print("PageUp")
-			case KeyPageDown:
-				fmt.Print("PageDown")
-			case KeyDelete:
-				fmt.Print("Delete")
-			case KeyEsc:
-				fmt.Print("Escape")
-			default:
-				fmt.Print("Unknown key")
 			}
 		}
 	}
