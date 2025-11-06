@@ -9,6 +9,12 @@ Start program.
 go run .
 ```
 
+# Keys
+|Keys    |Description|
+|--------|-----------|
+|`Ctrl+Q`|Quit       |
+
+
 ## Prompt
 In order for ChatGPT to adapt to the existing files, the contents of the relevant files in each prompt are required.
 How can this be achieved? Here are two options. Ubuntu 24.04 with Wayland is required.
