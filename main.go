@@ -186,13 +186,22 @@ func readKeyBlocking(inputReader *bufio.Reader) (KeyEvent, error) {
 	return ev, nil
 }
 
+func getTerminalSize(fd int) (cols, rows int, err error) {
+	cols, rows, err = term.GetSize(fd)
+	return
+}
+
 func refreshScreen() {
+	_, rows, err := getTerminalSize(int(os.Stdout.Fd()))
+	if err != nil {
+		_, rows = 80, 24 // fallback
+	}
+
 	// Fullscreen
 	fmt.Print(ansiClearScrollback, ansiCursorTopLeftCorner, ansiClearScreen)
 
-	// draw 24 rows of '~'
-	const editorRows = 24
-	for i := 0; i < editorRows; i++ {
+	// draw rows of '~' to the last line
+	for i := 0; i < rows; i++ {
 		fmt.Print("~\r\n")
 	}
 
