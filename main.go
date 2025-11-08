@@ -6,19 +6,26 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"golang.org/x/term"
 )
 
-// ANSI escape sequences for screen control
+// ANSI escape sequences
 const (
-	ansiClearScreen         = "\033[2J"
-	ansiClearScrollback     = "\033[3J"
-	ansiCursorTopLeftCorner = "\033[H"
-	ansiAltScreenOn         = "\033[?1049h"
-	ansiAltScreenOff        = "\033[?1049l"
+	ansiCursorPositionMoveToOffScreen = "\033[999;999H"
+	ansiCursorPositionRequest         = "\033[6n"
+	ansiCursorPositionRestore         = "\0338"
+	ansiCursorPositionSave            = "\0337"
+	ansiCursorPositionToHome          = "\033[H"
+	ansiScreenAltOff                  = "\033[?1049l"
+	ansiScreenAltOn                   = "\033[?1049h"
+	ansiScreenClear                   = "\033[2J"
+	ansiScrollbackClear               = "\033[3J"
 )
 
 // KeyCode represents special non-printable keys.
@@ -188,17 +195,54 @@ func readKeyBlocking(inputReader *bufio.Reader) (KeyEvent, error) {
 
 func getTerminalSize(fd int) (cols, rows int, err error) {
 	cols, rows, err = term.GetSize(fd)
-	return
+	if err == nil && cols > 0 && rows > 0 {
+		return cols, rows, nil
+	}
+
+	// Fallback: use cursor position query (CSI 6n)
+	fmt.Print(ansiCursorPositionSave)
+	fmt.Print(ansiCursorPositionMoveToOffScreen)
+	fmt.Print(ansiCursorPositionRequest)
+
+	// Read the response: ESC [ rows ; cols R
+	responceBuffer := make([]byte, 32)
+	os.Stdin.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	responseSize, _ := os.Stdin.Read(responceBuffer)
+	os.Stdin.SetReadDeadline(time.Time{}) // clear deadline
+
+	// Restore cursor
+	fmt.Print(ansiCursorPositionRestore)
+
+	// Parse response if valid
+	if responseSize > 0 {
+		// Expected: ESC [ rows ; cols R
+		esc := bytes.IndexByte(responceBuffer[:responseSize], '[')
+		rowsAndCols := bytes.IndexByte(responceBuffer[:responseSize], 'R')
+		if esc >= 0 && rowsAndCols > esc {
+			var rows, cols int
+			if _, perr := fmt.Sscanf(string(responceBuffer[esc+1:rowsAndCols]), "%d;%d", &rows, &cols); perr == nil {
+				if cols > 0 && rows > 0 {
+					return cols, rows, nil
+				}
+			}
+		}
+	}
+
+	const defaultRows = 25
+	const defaultCols = 80
+
+	// Fallback to safe default
+	return defaultRows, defaultCols, fmt.Errorf("could not determine terminal size, using defaults %dx%d", defaultRows, defaultCols)
 }
 
-func refreshScreen() {
+func refreshScreen() error {
 	_, rows, err := getTerminalSize(int(os.Stdout.Fd()))
 	if err != nil {
-		_, rows = 80, 24 // fallback
+		return fmt.Errorf("could not refresh screen dimensions: %w", err)
 	}
 
 	// Fullscreen
-	fmt.Print(ansiClearScrollback, ansiCursorTopLeftCorner, ansiClearScreen)
+	fmt.Print(ansiScrollbackClear, ansiCursorPositionToHome, ansiScreenClear)
 
 	// draw rows of '~' to the last line
 	for i := 0; i < rows; i++ {
@@ -206,15 +250,15 @@ func refreshScreen() {
 	}
 
 	// Move cursor back to top-left corner after drawing
-	fmt.Print(ansiCursorTopLeftCorner)
+	fmt.Print(ansiCursorPositionToHome)
+	return nil
 }
 
 func main() {
 	// put stdin into raw mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to set raw mode:", err)
-		os.Exit(1)
+		log.Fatalf("Fatal error during setting raw mode: %v", err)
 	}
 
 	stdin := int(os.Stdin.Fd())
@@ -228,9 +272,9 @@ func main() {
 	}
 
 	// enter new screen buffer
-	fmt.Print(ansiAltScreenOn)
+	fmt.Print(ansiScreenAltOn)
 	// leave new screen buffer
-	defer fmt.Print(ansiAltScreenOff)
+	defer fmt.Print(ansiScreenAltOff)
 
 	// restores the terminal settings after program exit or abort
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
@@ -255,7 +299,10 @@ func main() {
 	}()
 
 	for {
-		refreshScreen()
+		if err := refreshScreen(); err != nil {
+			log.Fatalf("Fatal error during refreshing screen: %v", err)
+		}
+
 		select {
 		case ev, ok := <-keyChannel:
 			if !ok {
