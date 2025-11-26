@@ -10,10 +10,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/term"
 )
+
+const editorVersion = "0.1"
 
 // ANSI escape sequences
 const (
@@ -196,10 +199,10 @@ func readKeyBlocking(inputReader *bufio.Reader) (KeyEvent, error) {
 	return ev, nil
 }
 
-func getTerminalSize(fd int) (cols, rows int, err error) {
-	cols, rows, err = term.GetSize(fd)
-	if err == nil && cols > 0 && rows > 0 {
-		return cols, rows, nil
+func getTerminalSize(fd int) (columns, rows int, err error) {
+	columns, rows, err = term.GetSize(fd)
+	if err == nil && columns > 0 && rows > 0 {
+		return columns, rows, nil
 	}
 
 	// Fallback: use cursor position query (CSI 6n)
@@ -238,20 +241,36 @@ func getTerminalSize(fd int) (cols, rows int, err error) {
 	return defaultRows, defaultCols, fmt.Errorf("could not determine terminal size, using defaults %dx%d", defaultRows, defaultCols)
 }
 
-func drawRows(buf *bytes.Buffer, numberOfRows int) {
-	// draw column of tildes on the left hand side
-	for i := 0; i < numberOfRows-1; i++ {
+func drawRows(buf *bytes.Buffer, columns, rows int) {
+	welcomeRow := rows / 3
+	welcome := fmt.Sprintf("VimGo -- version %s", editorVersion)
+
+	for i := 0; i < rows; i++ {
 		buf.WriteString(ansiLineClear)
-		buf.WriteString("~\r\n")
+
+		if i == welcomeRow {
+			if len(welcome) > columns {
+				welcome = welcome[:columns]
+			}
+			padding := (columns - len(welcome)) / 2
+			if padding > 0 {
+				buf.WriteString(strings.Repeat(" ", padding))
+			}
+			buf.WriteString(welcome)
+		} else {
+			buf.WriteString("~")
+		}
+
+		if i < rows-1 {
+			buf.WriteString("\r\n")
+		}
 	}
-	buf.WriteString(ansiLineClear)
-	buf.WriteString("~")
 }
 
 func refreshScreen() error {
 	var buf bytes.Buffer
 
-	_, rows, err := getTerminalSize(int(os.Stdout.Fd()))
+	columns, rows, err := getTerminalSize(int(os.Stdout.Fd()))
 	if err != nil {
 		return fmt.Errorf("could not refresh screen dimensions: %w", err)
 	}
@@ -262,7 +281,7 @@ func refreshScreen() error {
 	buf.WriteString(ansiScrollbackClear)
 	buf.WriteString(ansiCursorPositionToHome)
 
-	drawRows(&buf, rows)
+	drawRows(&buf, columns, rows)
 
 	buf.WriteString(ansiCursorPositionToHome)
 	buf.WriteString(ansiCursorShow)
