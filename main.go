@@ -249,14 +249,17 @@ func drawRows(buf *bytes.Buffer, columns, rows int) {
 		buf.WriteString(ansiLineClear)
 
 		if i == welcomeRow {
-			if len(welcome) > columns {
-				welcome = welcome[:columns]
+			buf.WriteString("~")
+
+			welcomeText := welcome
+			if len(welcomeText) > columns {
+				welcomeText = welcomeText[:columns]
 			}
 			padding := (columns - len(welcome)) / 2
 			if padding > 0 {
 				buf.WriteString(strings.Repeat(" ", padding))
 			}
-			buf.WriteString(welcome)
+			buf.WriteString(welcomeText)
 		} else {
 			buf.WriteString("~")
 		}
