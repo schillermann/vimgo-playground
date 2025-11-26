@@ -24,6 +24,7 @@ const (
 	ansiCursorPositionSave            = "\0337"
 	ansiCursorPositionToHome          = "\033[H"
 	ansiCursorShow                    = "\033[?25h"
+	ansiLineClear                     = "\033[K"
 	ansiScreenAltOff                  = "\033[?1049l"
 	ansiScreenAltOn                   = "\033[?1049h"
 	ansiScreenClear                   = "\033[2J"
@@ -240,8 +241,10 @@ func getTerminalSize(fd int) (cols, rows int, err error) {
 func drawRows(buf *bytes.Buffer, numberOfRows int) {
 	// draw column of tildes on the left hand side
 	for i := 0; i < numberOfRows-1; i++ {
+		buf.WriteString(ansiLineClear)
 		buf.WriteString("~\r\n")
 	}
+	buf.WriteString(ansiLineClear)
 	buf.WriteString("~")
 }
 
@@ -258,7 +261,6 @@ func refreshScreen() error {
 	// Fullscreen - Accumulate screen update in buffer
 	buf.WriteString(ansiScrollbackClear)
 	buf.WriteString(ansiCursorPositionToHome)
-	buf.WriteString(ansiScreenClear)
 
 	drawRows(&buf, rows)
 
