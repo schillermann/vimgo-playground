@@ -17,11 +17,13 @@ import (
 
 // ANSI escape sequences
 const (
+	ansiCursorHide                    = "\033[?25l"
 	ansiCursorPositionMoveToOffScreen = "\033[999;999H"
 	ansiCursorPositionRequest         = "\033[6n"
 	ansiCursorPositionRestore         = "\0338"
 	ansiCursorPositionSave            = "\0337"
 	ansiCursorPositionToHome          = "\033[H"
+	ansiCursorShow                    = "\033[?25h"
 	ansiScreenAltOff                  = "\033[?1049l"
 	ansiScreenAltOn                   = "\033[?1049h"
 	ansiScreenClear                   = "\033[2J"
@@ -251,6 +253,8 @@ func refreshScreen() error {
 		return fmt.Errorf("could not refresh screen dimensions: %w", err)
 	}
 
+	buf.WriteString(ansiCursorHide)
+
 	// Fullscreen - Accumulate screen update in buffer
 	buf.WriteString(ansiScrollbackClear)
 	buf.WriteString(ansiCursorPositionToHome)
@@ -258,8 +262,8 @@ func refreshScreen() error {
 
 	drawRows(&buf, rows)
 
-	// Move cursor back to top-left corner after drawing
 	buf.WriteString(ansiCursorPositionToHome)
+	buf.WriteString(ansiCursorShow)
 
 	// Single write
 	_, writeErr := os.Stdout.Write(buf.Bytes())
