@@ -21,6 +21,7 @@ const editorVersion = "0.1"
 // ANSI escape sequences
 const (
 	ansiCursorHide                    = "\033[?25l"
+	ansiCursorPositionMove            = "\033[%d;%dH"
 	ansiCursorPositionMoveToOffScreen = "\033[999;999H"
 	ansiCursorPositionRequest         = "\033[6n"
 	ansiCursorPositionRestore         = "\0338"
@@ -60,6 +61,8 @@ type KeyEvent struct {
 	Rune    rune    // if printable (KeyRune) or ctrl printable char
 	Ctrl    bool    // whether ctrl was pressed (for printable letters)
 }
+
+var cursorX, cursorY int
 
 // readKeyBlocking reads from stdin (one or more bytes) and returns a KeyEvent.
 // It assumes stdin is in raw mode.
@@ -286,7 +289,7 @@ func refreshScreen() error {
 
 	drawRows(&buf, columns, rows)
 
-	buf.WriteString(ansiCursorPositionToHome)
+	buf.WriteString(fmt.Sprintf(ansiCursorPositionMove, cursorY+1, cursorX+1))
 	buf.WriteString(ansiCursorShow)
 
 	// Single write
@@ -348,6 +351,22 @@ func main() {
 		case ev, ok := <-keyChannel:
 			if !ok {
 				return
+			}
+
+			// Vim-style movement: h, j, k, l
+			switch ev.Rune {
+			case 'h':
+				if cursorX > 0 {
+					cursorX--
+				}
+			case 'l':
+				cursorX++
+			case 'k':
+				if cursorY > 0 {
+					cursorY--
+				}
+			case 'j':
+				cursorY++
 			}
 
 			// Quit on Ctrl-Q
