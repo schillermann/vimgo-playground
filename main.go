@@ -235,24 +235,36 @@ func getTerminalSize(fd int) (cols, rows int, err error) {
 	return defaultRows, defaultCols, fmt.Errorf("could not determine terminal size, using defaults %dx%d", defaultRows, defaultCols)
 }
 
+func drawRows(buf *bytes.Buffer, numberOfRows int) {
+	// draw column of tildes on the left hand side
+	for i := 0; i < numberOfRows-1; i++ {
+		buf.WriteString("~\r\n")
+	}
+	buf.WriteString("~")
+}
+
 func refreshScreen() error {
+	var buf bytes.Buffer
+
 	_, rows, err := getTerminalSize(int(os.Stdout.Fd()))
 	if err != nil {
 		return fmt.Errorf("could not refresh screen dimensions: %w", err)
 	}
 
-	// Fullscreen
-	fmt.Print(ansiScrollbackClear, ansiCursorPositionToHome, ansiScreenClear)
+	// Fullscreen - Accumulate screen update in buffer
+	buf.WriteString(ansiScrollbackClear)
+	buf.WriteString(ansiCursorPositionToHome)
+	buf.WriteString(ansiScreenClear)
 
-	// draw column of tildes on the left hand side
-	for i := 0; i < rows-1; i++ {
-		fmt.Println("~\r")
-	}
-	fmt.Print("~")
+	drawRows(&buf, rows)
 
 	// Move cursor back to top-left corner after drawing
-	fmt.Print(ansiCursorPositionToHome)
-	return nil
+	buf.WriteString(ansiCursorPositionToHome)
+
+	// Single write
+	_, writeErr := os.Stdout.Write(buf.Bytes())
+
+	return writeErr
 }
 
 func main() {
