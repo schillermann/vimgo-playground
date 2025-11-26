@@ -244,10 +244,11 @@ func refreshScreen() error {
 	// Fullscreen
 	fmt.Print(ansiScrollbackClear, ansiCursorPositionToHome, ansiScreenClear)
 
-	// draw rows of '~' to the last line
-	for i := 0; i < rows; i++ {
-		fmt.Print("~\r\n")
+	// draw column of tildes on the left hand side
+	for i := 0; i < rows-1; i++ {
+		fmt.Println("~\r")
 	}
+	fmt.Print("~")
 
 	// Move cursor back to top-left corner after drawing
 	fmt.Print(ansiCursorPositionToHome)
