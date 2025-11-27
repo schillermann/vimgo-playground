@@ -273,13 +273,8 @@ func drawRows(buf *bytes.Buffer, columns, rows int) {
 	}
 }
 
-func refreshScreen() error {
+func refreshScreen(columns, rows int) error {
 	var buf bytes.Buffer
-
-	columns, rows, err := getTerminalSize(int(os.Stdout.Fd()))
-	if err != nil {
-		return fmt.Errorf("could not refresh screen dimensions: %w", err)
-	}
 
 	buf.WriteString(ansiCursorHide)
 
@@ -343,7 +338,11 @@ func main() {
 	}()
 
 	for {
-		if err := refreshScreen(); err != nil {
+		columns, rows, err := getTerminalSize(int(os.Stdout.Fd()))
+		if err != nil {
+			log.Fatalf("Fatal error during reading the number of terminal columns and rows: %w", err)
+		}
+		if err := refreshScreen(columns, rows); err != nil {
 			log.Fatalf("Fatal error during refreshing screen: %v", err)
 		}
 
@@ -360,13 +359,17 @@ func main() {
 					cursorX--
 				}
 			case 'l':
-				cursorX++
+				if cursorX < columns-1 {
+					cursorX++
+				}
 			case 'k':
 				if cursorY > 0 {
 					cursorY--
 				}
 			case 'j':
-				cursorY++
+				if cursorY < rows-1 {
+					cursorY++
+				}
 			}
 
 			// Quit on Ctrl-Q
