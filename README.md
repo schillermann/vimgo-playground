@@ -32,7 +32,9 @@ Run the following script in the project folder in the console to copy all go fil
 ```
 
 # Experiences
+
 ## Special Case
+
 ChatGPT can make a common suggestion that might not work for your specific case.
 
 **Example:**
@@ -62,6 +64,7 @@ In my case, the error was immediately apparent, in more complex programs, it can
 Therefore, it remains the developer's responsibility to have sufficient experience to recognize such errors in the code beforehand, even before it is committed to Git.
 
 ## Alternatives 
+
 ChatGPT suggests common approaches, but not specific ones.
 
 **Example:**
@@ -76,3 +79,21 @@ Only after I explicitly mentioned `VMIN` and `VTIME` did it offer a solution for
 
 I only became aware of this possibility by reading the Termios documentation.
 ChatGPT doesn't save you from having to read the documentation.
+
+## Verbose Code
+
+Simple logic is unnecessarily inflated.
+Sure, the code change might work, but who ultimately has to solve the tricky problems, when the AI gets stuck?
+The developer, of course.
+And what does a developer need to solve a problem?
+A good code overview and that's only possible if the code is properly structured.
+
+**Example:**
+Using a script, I copied the contents of the code files to the clipboard as a prompt so that ChatGPT could provide the context for each task.
+However, this meant that after a while, my chat window became very cluttered.
+The Chrome browser was already starting to complain. So, I needed an alternative. Therefore, I started working with the Codex CLI in the terminal.
+I gave him a simple initial task, the cursor should not move off the screen at the bottom or right.
+As a solution, I received approximately 15 lines of code in which he created a function containing the logic to check if the cursor is outside the off-screen area, if so, it should reset the cursor.
+This seemed too bloated to me, as it would have been much simpler to use two `if` statements to increment the cursor, and the cursor wouldn't have needed to be reset.
+I gave him a second chance. The second time, he figured out how to add an `if` statement around each cursor increment.
+So it's still important to understand the code changes and above all to have your own solution ready, at least a rough one, which you can compare with the suggested solution, because otherwise, the maintainability of the code is quickly compromised.
