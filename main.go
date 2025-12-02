@@ -63,6 +63,7 @@ type KeyEvent struct {
 }
 
 var cursorIndexX, cursorIndexY int
+var editorLines []string // current in-memory buffer lines
 
 // readKeyBlocking reads from stdin (one or more bytes) and returns a KeyEvent.
 // It assumes stdin is in raw mode.
@@ -244,36 +245,48 @@ func getTerminalSize(fd int) (columns, rows int, err error) {
 	return defaultRows, defaultCols, fmt.Errorf("could not determine terminal size, using defaults %dx%d", defaultRows, defaultCols)
 }
 
-func drawRows(buf *bytes.Buffer, columns, rows int) {
-	welcomeRow := rows / 3
-	welcome := fmt.Sprintf("VimGo -- version %s", editorVersion)
-
-	for i := 0; i < rows; i++ {
+func drawRows(buf *bytes.Buffer, terminalColumns, terminalRows int) {
+	for i := 0; i < terminalRows; i++ {
 		buf.WriteString(ansiLineClear)
 
-		if i == welcomeRow {
-			buf.WriteString("~")
+		if len(editorLines) == 0 {
+			welcomeRow := terminalRows / 3
 
-			welcomeText := welcome
-			if len(welcomeText) > columns {
-				welcomeText = welcomeText[:columns]
+			if i == welcomeRow {
+				welcome := fmt.Sprintf("VimGo -- version %s", editorVersion)
+				buf.WriteString("~")
+
+				welcomeText := welcome
+				if len(welcomeText) > terminalColumns {
+					welcomeText = welcomeText[:terminalColumns]
+				}
+				padding := (terminalColumns - len(welcome)) / 2
+				if padding > 0 {
+					buf.WriteString(strings.Repeat(" ", padding))
+				}
+				buf.WriteString(welcomeText)
+			} else {
+				buf.WriteString("~")
 			}
-			padding := (columns - len(welcome)) / 2
-			if padding > 0 {
-				buf.WriteString(strings.Repeat(" ", padding))
-			}
-			buf.WriteString(welcomeText)
 		} else {
-			buf.WriteString("~")
+			if i < len(editorLines) {
+				line := editorLines[i]
+				if len(line) > terminalColumns {
+					line = line[:terminalColumns]
+				}
+				buf.WriteString(line)
+			} else {
+				buf.WriteString("~")
+			}
 		}
 
-		if i < rows-1 {
+		if i < terminalRows-1 {
 			buf.WriteString("\r\n")
 		}
 	}
 }
 
-func refreshScreen(columns, rows int) error {
+func refreshTerminal(columns, rows int) error {
 	var buf bytes.Buffer
 
 	buf.WriteString(ansiCursorHide)
@@ -291,6 +304,10 @@ func refreshScreen(columns, rows int) error {
 	_, writeErr := os.Stdout.Write(buf.Bytes())
 
 	return writeErr
+}
+
+func editorOpen() {
+	editorLines = []string{"Hello, world!"}
 }
 
 func main() {
@@ -337,12 +354,14 @@ func main() {
 		}
 	}()
 
+	editorOpen()
+
 	for {
-		columns, rows, err := getTerminalSize(int(os.Stdout.Fd()))
+		terminalColumns, terminalRows, err := getTerminalSize(int(os.Stdout.Fd()))
 		if err != nil {
 			log.Fatalf("Fatal error during reading the number of terminal columns and rows: %w", err)
 		}
-		if err := refreshScreen(columns, rows); err != nil {
+		if err := refreshTerminal(terminalColumns, terminalRows); err != nil {
 			log.Fatalf("Fatal error during refreshing screen: %v", err)
 		}
 
@@ -359,7 +378,7 @@ func main() {
 					cursorIndexX--
 				}
 			case 'l':
-				if cursorIndexX < columns-1 {
+				if cursorIndexX < terminalColumns-1 {
 					cursorIndexX++
 				}
 			case 'k':
@@ -367,7 +386,7 @@ func main() {
 					cursorIndexY--
 				}
 			case 'j':
-				if cursorIndexY < rows-1 {
+				if cursorIndexY < terminalRows-1 {
 					cursorIndexY++
 				}
 			}
@@ -377,14 +396,14 @@ func main() {
 			case KeyPageUp:
 				cursorIndexY = 0
 			case KeyPageDown:
-				if rows > 0 {
-					cursorIndexY = rows - 1
+				if terminalRows > 0 {
+					cursorIndexY = terminalRows - 1
 				}
 			case KeyHome:
 				cursorIndexX = 0
 			case KeyEnd:
-				if columns > 0 {
-					cursorIndexX = columns - 1
+				if terminalColumns > 0 {
+					cursorIndexX = terminalColumns - 1
 				}
 			}
 
