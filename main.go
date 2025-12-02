@@ -372,6 +372,16 @@ func main() {
 				}
 			}
 
+			// Page Up moves cursor to top; Page Down moves cursor to bottom.
+			switch ev.KeyCode {
+			case KeyPageUp:
+				cursorY = 0
+			case KeyPageDown:
+				if rows > 0 {
+					cursorY = rows - 1
+				}
+			}
+
 			// Quit on Ctrl-Q
 			if ev.Ctrl && ev.Rune == 'q' {
 				fmt.Println("\nQuit (Ctrl-Q). Restoring terminal and exiting.")
