@@ -372,13 +372,19 @@ func main() {
 				}
 			}
 
-			// Page Up moves cursor to top; Page Down moves cursor to bottom.
+			// Page Up/Down and Home/End navigation.
 			switch ev.KeyCode {
 			case KeyPageUp:
 				cursorIndexY = 0
 			case KeyPageDown:
 				if rows > 0 {
 					cursorIndexY = rows - 1
+				}
+			case KeyHome:
+				cursorIndexX = 0
+			case KeyEnd:
+				if columns > 0 {
+					cursorIndexX = columns - 1
 				}
 			}
 
