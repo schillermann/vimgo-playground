@@ -306,7 +306,45 @@ func refreshTerminal(columns, rows int) error {
 	return writeErr
 }
 
-func openEditor(filename string) error {
+func editorMoveCursor(ev KeyEvent, terminalColumns, terminalRows int) {
+	// Vim-style movement: h, j, k, l
+	switch ev.Rune {
+	case 'h':
+		if cursorIndexX > 0 {
+			cursorIndexX--
+		}
+	case 'l':
+		if cursorIndexX < terminalColumns-1 {
+			cursorIndexX++
+		}
+	case 'k':
+		if cursorIndexY > 0 {
+			cursorIndexY--
+		}
+	case 'j':
+		if cursorIndexY < terminalRows-1 {
+			cursorIndexY++
+		}
+	}
+
+	// Page Up/Down and Home/End navigation.
+	switch ev.KeyCode {
+	case KeyPageUp:
+		cursorIndexY = 0
+	case KeyPageDown:
+		if terminalRows > 0 {
+			cursorIndexY = terminalRows - 1
+		}
+	case KeyHome:
+		cursorIndexX = 0
+	case KeyEnd:
+		if terminalColumns > 0 {
+			cursorIndexX = terminalColumns - 1
+		}
+	}
+}
+
+func editorOpen(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		editorLines = []string{}
@@ -391,41 +429,7 @@ func main() {
 				return
 			}
 
-			// Vim-style movement: h, j, k, l
-			switch ev.Rune {
-			case 'h':
-				if cursorIndexX > 0 {
-					cursorIndexX--
-				}
-			case 'l':
-				if cursorIndexX < terminalColumns-1 {
-					cursorIndexX++
-				}
-			case 'k':
-				if cursorIndexY > 0 {
-					cursorIndexY--
-				}
-			case 'j':
-				if cursorIndexY < terminalRows-1 {
-					cursorIndexY++
-				}
-			}
-
-			// Page Up/Down and Home/End navigation.
-			switch ev.KeyCode {
-			case KeyPageUp:
-				cursorIndexY = 0
-			case KeyPageDown:
-				if terminalRows > 0 {
-					cursorIndexY = terminalRows - 1
-				}
-			case KeyHome:
-				cursorIndexX = 0
-			case KeyEnd:
-				if terminalColumns > 0 {
-					cursorIndexX = terminalColumns - 1
-				}
-			}
+			editorMoveCursor(ev, terminalColumns, terminalRows)
 
 			// Quit on Ctrl-Q
 			if ev.Ctrl && ev.Rune == 'q' {
