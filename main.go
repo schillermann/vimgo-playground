@@ -306,8 +306,24 @@ func refreshTerminal(columns, rows int) error {
 	return writeErr
 }
 
-func editorOpen() {
-	editorLines = []string{"Hello, world!"}
+func openEditor(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		editorLines = []string{}
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		editorLines = append(editorLines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
@@ -354,7 +370,11 @@ func main() {
 		}
 	}()
 
-	editorOpen()
+	if len(os.Args) > 1 {
+		if err := openEditor(os.Args[1]); err != nil {
+			log.Fatalf("Fatal error during opening the file %s: %v", os.Args[1], err)
+		}
+	}
 
 	for {
 		terminalColumns, terminalRows, err := getTerminalSize(int(os.Stdout.Fd()))
