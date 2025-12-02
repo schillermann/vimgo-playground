@@ -62,7 +62,7 @@ type KeyEvent struct {
 	Ctrl    bool    // whether ctrl was pressed (for printable letters)
 }
 
-var cursorX, cursorY int
+var cursorIndexX, cursorIndexY int
 
 // readKeyBlocking reads from stdin (one or more bytes) and returns a KeyEvent.
 // It assumes stdin is in raw mode.
@@ -284,7 +284,7 @@ func refreshScreen(columns, rows int) error {
 
 	drawRows(&buf, columns, rows)
 
-	buf.WriteString(fmt.Sprintf(ansiCursorPositionMove, cursorY+1, cursorX+1))
+	buf.WriteString(fmt.Sprintf(ansiCursorPositionMove, cursorIndexY+1, cursorIndexX+1))
 	buf.WriteString(ansiCursorShow)
 
 	// Single write
@@ -355,30 +355,30 @@ func main() {
 			// Vim-style movement: h, j, k, l
 			switch ev.Rune {
 			case 'h':
-				if cursorX > 0 {
-					cursorX--
+				if cursorIndexX > 0 {
+					cursorIndexX--
 				}
 			case 'l':
-				if cursorX < columns-1 {
-					cursorX++
+				if cursorIndexX < columns-1 {
+					cursorIndexX++
 				}
 			case 'k':
-				if cursorY > 0 {
-					cursorY--
+				if cursorIndexY > 0 {
+					cursorIndexY--
 				}
 			case 'j':
-				if cursorY < rows-1 {
-					cursorY++
+				if cursorIndexY < rows-1 {
+					cursorIndexY++
 				}
 			}
 
 			// Page Up moves cursor to top; Page Down moves cursor to bottom.
 			switch ev.KeyCode {
 			case KeyPageUp:
-				cursorY = 0
+				cursorIndexY = 0
 			case KeyPageDown:
 				if rows > 0 {
-					cursorY = rows - 1
+					cursorIndexY = rows - 1
 				}
 			}
 
