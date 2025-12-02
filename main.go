@@ -63,6 +63,7 @@ type KeyEvent struct {
 }
 
 var cursorIndexX, cursorIndexY int
+var rowOff int
 var editorLines []string // current in-memory buffer lines
 
 // readKeyBlocking reads from stdin (one or more bytes) and returns a KeyEvent.
@@ -245,8 +246,9 @@ func getTerminalSize(fd int) (columns, rows int, err error) {
 	return defaultRows, defaultCols, fmt.Errorf("could not determine terminal size, using defaults %dx%d", defaultRows, defaultCols)
 }
 
-func drawRows(buf *bytes.Buffer, terminalColumns, terminalRows int) {
+func editorDrawRows(buf *bytes.Buffer, terminalColumns, terminalRows int) {
 	for i := 0; i < terminalRows; i++ {
+		fileRow := i + rowOff
 		buf.WriteString(ansiLineClear)
 
 		if len(editorLines) == 0 {
@@ -269,8 +271,9 @@ func drawRows(buf *bytes.Buffer, terminalColumns, terminalRows int) {
 				buf.WriteString("~")
 			}
 		} else {
-			if i < len(editorLines) {
-				line := editorLines[i]
+			notEndOfFile := fileRow < len(editorLines)
+			if notEndOfFile {
+				line := editorLines[fileRow]
 				if len(line) > terminalColumns {
 					line = line[:terminalColumns]
 				}
@@ -286,7 +289,18 @@ func drawRows(buf *bytes.Buffer, terminalColumns, terminalRows int) {
 	}
 }
 
-func refreshTerminal(columns, rows int) error {
+func editorScroll(terminalRows int) {
+	if cursorIndexY < rowOff {
+		rowOff = cursorIndexY
+	}
+	if cursorIndexY >= rowOff+terminalRows {
+		rowOff = cursorIndexY - terminalRows + 1
+	}
+}
+
+func terminalRefresh(columns, rows int) error {
+	editorScroll(rows)
+
 	var buf bytes.Buffer
 
 	buf.WriteString(ansiCursorHide)
@@ -295,7 +309,7 @@ func refreshTerminal(columns, rows int) error {
 	buf.WriteString(ansiScrollbackClear)
 	buf.WriteString(ansiCursorPositionToHome)
 
-	drawRows(&buf, columns, rows)
+	editorDrawRows(&buf, columns, rows)
 
 	buf.WriteString(fmt.Sprintf(ansiCursorPositionMove, cursorIndexY+1, cursorIndexX+1))
 	buf.WriteString(ansiCursorShow)
@@ -409,7 +423,7 @@ func main() {
 	}()
 
 	if len(os.Args) > 1 {
-		if err := openEditor(os.Args[1]); err != nil {
+		if err := editorOpen(os.Args[1]); err != nil {
 			log.Fatalf("Fatal error during opening the file %s: %v", os.Args[1], err)
 		}
 	}
@@ -419,7 +433,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Fatal error during reading the number of terminal columns and rows: %w", err)
 		}
-		if err := refreshTerminal(terminalColumns, terminalRows); err != nil {
+		if err := terminalRefresh(terminalColumns, terminalRows); err != nil {
 			log.Fatalf("Fatal error during refreshing screen: %v", err)
 		}
 
